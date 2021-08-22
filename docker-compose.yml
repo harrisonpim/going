@@ -2,7 +2,9 @@ version: "3"
 
 services:
   main:
-    build: .
+    build:
+      context: cmd/hello-world
+      dockerfile: ../../Dockerfile
     ports:
       - 8000:8000
-    command: "go run cmd/hello-world/main.go"
+    command: "go run main.go"

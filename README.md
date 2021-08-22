@@ -1,4 +1,4 @@
-# :bear: Going
+# 🐹 Going
 
 I want to learn some [go](https://golang.org/).
 
