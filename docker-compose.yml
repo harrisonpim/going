@@ -1,10 +1,22 @@
 version: "3"
 
 services:
-  main:
+  api:
     build:
-      context: cmd/hello-world
+      context: cmd/api
       dockerfile: ../../Dockerfile
+    depends_on: 
+      - postgres
     ports:
       - 8000:8000
     command: "go run main.go"
+  postgres:
+    image: postgres
+    restart: always
+    env_file: .env
+    ports:
+      - 5432:5432
+    volumes:
+      - type: bind
+        source: ./data/postgres
+        target: /var/lib/postgresql/data/
