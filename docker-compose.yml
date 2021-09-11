@@ -7,23 +7,30 @@ services:
       dockerfile: ../Dockerfile
     depends_on:
       - postgres
-    volumes:
-      - type: bind
-        source: ./data/postgres
-        target: /data
     ports:
       - 3000:3000
     command: "go run ."
-    env_file:
-      - .env
+    env_file: .env
   postgres:
-    image: postgres:alpine
-    restart: always
-    env_file:
-      - .env
+    image: postgres:13.4-alpine
     ports:
       - 5432:5432
+    env_file: .env
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - type: bind
         source: ./data/postgres
-        target: /var/lib/postgresql/data/
+        target: /var/lib/postgresql/data
+  test:
+    build:
+      context: api
+      dockerfile: ../Dockerfile
+    depends_on:
+      - api
+    command: "go test -v ./test"
+    env_file: .env
+
+volumes:
+  pgdata:
+    external: true

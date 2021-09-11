@@ -1,7 +1,3 @@
-FROM golang:1.16-alpine
-
+FROM golang:1.16
 WORKDIR /src
-
 ADD . /src
-
-RUN go mod tidy
