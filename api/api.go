@@ -1,14 +1,21 @@
 package main
 
 import (
+	"log"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/harrisonpim/going/api/database"
+	"github.com/harrisonpim/going/api/models"
 )
 
+func root(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{"status": 200, "message": "👋"})
+}
+
 func CreateAuthor(c *fiber.Ctx) error {
-	db := database.DBConn
-	author := new(database.Author)
+	db := database.DB
+	author := &models.Author{}
 	if err := c.BodyParser(author); err != nil {
 		return c.Status(400).JSON(fiber.Map{"status": 400, "message": "Couldn't process author"})
 	}
@@ -17,29 +24,30 @@ func CreateAuthor(c *fiber.Ctx) error {
 }
 
 func GetAllAuthors(c *fiber.Ctx) error {
-	db := database.DBConn
-	authors := []database.Author{}
+	db := database.DB
+	authors := []models.Author{}
 	db.Find(&authors)
 	return c.JSON(authors)
 }
 
 func GetAuthor(c *fiber.Ctx) error {
 	id := c.Params("id")
-	db := database.DBConn
-	author := database.Author{}
+	db := database.DB
+	author := models.Author{}
 	db.Find(&author, id)
 
-	if author.FirstName == "" {
-		return c.Status(404).JSON(fiber.Map{"status": 404, "message": "No author found with ID: " + id})
-	}
+	// if author.FirstName == "" {
+	// 	return c.Status(404).JSON(fiber.Map{"status": 404, "message": "No author found with ID: " + id})
+	// }
+
 	return c.JSON(author)
 }
 
 func UpdateAuthor(c *fiber.Ctx) error {
 	id := c.Params("id")
-	db := database.DBConn
-	author := database.Author{}
-	update := new(database.Author)
+	db := database.DB
+	author := models.Author{}
+	update := new(models.Author)
 	if err := c.BodyParser(update); err != nil {
 		return c.Status(400).JSON(fiber.Map{"status": 400, "message": "Couldn't process author"})
 	}
@@ -47,14 +55,14 @@ func UpdateAuthor(c *fiber.Ctx) error {
 	if author.FirstName == "" {
 		return c.Status(404).JSON(fiber.Map{"status": 404, "message": "No author found with ID: " + id})
 	}
-	db.Model(&author).Update(&update)
+	// db.Model(&author).Update(&update)
 	return c.JSON(author)
 }
 
 func DeleteAuthor(c *fiber.Ctx) error {
 	id := c.Params("id")
-	db := database.DBConn
-	author := database.Author{}
+	db := database.DB
+	author := models.Author{}
 	db.First(&author, id)
 	if author.FirstName == "" {
 		return c.Status(404).JSON(fiber.Map{"status": 404, "message": "No author found with ID: " + id})
@@ -64,8 +72,8 @@ func DeleteAuthor(c *fiber.Ctx) error {
 }
 
 func CreateArticle(c *fiber.Ctx) error {
-	db := database.DBConn
-	article := new(database.Article)
+	db := database.DB
+	article := new(models.Article)
 	if err := c.BodyParser(article); err != nil {
 		return c.Status(400).JSON(fiber.Map{"status": 400, "message": "Couldn't process article"})
 	}
@@ -74,16 +82,16 @@ func CreateArticle(c *fiber.Ctx) error {
 }
 
 func GetAllArticles(c *fiber.Ctx) error {
-	db := database.DBConn
-	articles := []database.Article{}
+	db := database.DB
+	articles := []models.Article{}
 	db.Find(&articles)
 	return c.JSON(articles)
 }
 
 func GetArticle(c *fiber.Ctx) error {
 	id := c.Params("id")
-	db := database.DBConn
-	article := database.Article{}
+	db := database.DB
+	article := models.Article{}
 
 	db.Find(&article, id)
 	if article.Title == "" {
@@ -94,10 +102,10 @@ func GetArticle(c *fiber.Ctx) error {
 
 func UpdateArticle(c *fiber.Ctx) error {
 	id := c.Params("id")
-	db := database.DBConn
-	article := database.Article{}
+	db := database.DB
+	article := models.Article{}
 
-	update := new(database.Article)
+	update := new(models.Article)
 	if err := c.BodyParser(update); err != nil {
 		return c.Status(400).JSON(fiber.Map{"status": 400, "message": "Couldn't process article"})
 	}
@@ -105,14 +113,14 @@ func UpdateArticle(c *fiber.Ctx) error {
 	if article.Title == "" {
 		return c.Status(404).JSON(fiber.Map{"status": 404, "message": "No article found with ID: " + id})
 	}
-	db.Model(&article).Update(&update)
+	// db.Model(&article).Update(&update)
 	return c.JSON(article)
 }
 
 func DeleteArticle(c *fiber.Ctx) error {
 	id := c.Params("id")
-	db := database.DBConn
-	article := database.Article{}
+	db := database.DB
+	article := models.Article{}
 
 	db.First(&article, id)
 	if article.Title == "" {
@@ -123,22 +131,31 @@ func DeleteArticle(c *fiber.Ctx) error {
 }
 
 func main() {
-	database.Init()
+	_, err := database.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	app := fiber.New()
 	app.Use(logger.New())
+	app.Get("/", root)
 
-	app.Post("/articles", CreateArticle)
-	app.Get("/articles", GetAllArticles)
-	app.Get("/articles/:id", GetArticle)
-	app.Put("/articles/:id", UpdateArticle)
-	app.Delete("/articles/:id", DeleteArticle)
+	authors := app.Group("/authors")
+	authors.Post("/", CreateAuthor)
+	authors.Get("/", GetAllAuthors)
+	authors.Get("/:id", GetAuthor)
+	authors.Put("/:id", UpdateAuthor)
+	authors.Delete("/:id", DeleteAuthor)
 
-	app.Post("/authors", CreateAuthor)
-	app.Get("/authors", GetAllAuthors)
-	app.Get("/authors/:id", GetAuthor)
-	app.Put("/authors/:id", UpdateAuthor)
-	app.Delete("/authors/:id", DeleteAuthor)
+	articles := app.Group("/articles")
+	articles.Post("/", CreateArticle)
+	articles.Get("/", GetAllArticles)
+	articles.Get("/:id", GetArticle)
+	articles.Put("/:id", UpdateArticle)
+	articles.Delete("/:id", DeleteArticle)
 
-	app.Listen(":3000")
+	err = app.Listen(":3000")
+	if err != nil {
+		log.Fatal(err)
+	}
 }

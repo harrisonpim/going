@@ -2,52 +2,47 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/harrisonpim/going/api/models"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-var DBConn *gorm.DB
+var DB *gorm.DB
+var err error
 
-var dsn = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-	os.Getenv("POSTGRES_HOST"), os.Getenv("POSTGRES_PORT"), os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), os.Getenv("POSTGRES_DB"))
+func Connect() (*gorm.DB, error) {
 
-type Base struct {
-	ID		  string     `gorm:"primaryKey"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time `gorm:"index"`
-}
+	host := os.Getenv("POSTGRES_HOST")
+	port := os.Getenv("POSTGRES_PORT")
+	user := os.Getenv("POSTGRES_USER")
+	pass := os.Getenv("POSTGRES_PASSWORD")
+	name := os.Getenv("POSTGRES_DB")
 
-func (base *Base) BeforeCreate(tx *gorm.DB) (err error) {
-	base.ID = uuid.NewString() // UUID version 4
-	return
-  }
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, pass, name)
 
-type Author struct {
-	Base
-	FirstName string
-	LastName  string
-}
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold: time.Second, // Slow SQL threshold
+			LogLevel:      logger.Info, // Log level
+			Colorful:      true,
+		},
+	)
 
-type Article struct {
-	Base
-	Title    string
-	Content  string
-	Author   Author
-	AuthorID uint
-}
-
-func Init() {
-	var err error
-	DBConn, err = gorm.Open("postgres", dsn)
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: newLogger})
 	if err != nil {
-		panic("Couldn't connect to database:\n" + dsn)
+		log.Fatal("Couldn't connect to database:\n" + dsn)
+		return nil, err
 	}
-	fmt.Println("Database connected")
-	DBConn.AutoMigrate(&Author{}, &Article{})
-	fmt.Println("Database migrated")
+	err = DB.AutoMigrate(&models.Author{})
+	err = DB.AutoMigrate(&models.Article{})
+	if err != nil {
+		return nil, err
+	}
+	return DB, nil
 }
